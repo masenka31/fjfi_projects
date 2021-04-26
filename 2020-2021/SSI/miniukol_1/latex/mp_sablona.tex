@@ -1,0 +1,207 @@
+\documentclass[a4paper, 12pt, fleqn]{article}
+\usepackage[czech]{babel}
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+%\usepackage[latin2]{inputenc} % pro iso8859-2
+%\usepackage[IL2]{fontenc}     % fonty vygenerované pro iso8859-2
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Hlavička ZDE VYPLNIT 
+\newcommand{\autor}{Daniel KARLÍK, Michaela MAŠKOVÁ}
+\newcommand{\cislomp}{1} % 1,2,3
+\newcommand{\zadani}{OVM model}
+\newcommand{\rocnik}{2020/2021}
+%% Konec hlavičky
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%\usepackage{enumitem} 
+%\setlist{noitemsep, nolistsep}
+
+\usepackage{calc}
+\setlength{\textheight}{10in}
+\setlength{\textwidth}{6.5in}
+\setlength\oddsidemargin{0cm}
+\setlength\evensidemargin{(0cm}
+\setlength\topmargin{(\paperheight-\textheight-\headheight-\headsep-\footskip)/2 - 1in}
+
+%% matematika
+\usepackage{amssymb}
+\usepackage{amsmath}
+
+%% grafika
+\usepackage{color}
+\usepackage{tikz}
+\usetikzlibrary{decorations.pathreplacing, patterns}
+\usetikzlibrary{arrows.meta,positioning, datavisualization}
+
+%% Nastavení grafiky matlabovských kódů ------------------------------------------------
+\usepackage{listings} % balíček pro blok kódu
+\usepackage{matlab-prettifier} % matlabovské barvičky atd.
+\renewcommand{\lstlistingname}{Kód} % úprava caption
+% nějaké další drobnosti
+\lstset{basicstyle=\mlttfamily}
+\lstset{frame=single}
+\lstset{numbers=left}
+
+% pro případ použití speciálních českých znaků v kódu (např. v komentáři)
+\lstset{literate=
+	{í}{{\'i}}1
+	{á}{{\'a}}1
+	{ý}{{\'y}}1
+	{é}{{\'e}}1
+	{ř}{{\v{r}}}1
+	{ó}{{\'o}}1
+	{ů}{{\r{u}}}1
+	{č}{{\v{c}}}1
+	{ě}{{\v{e}}}1
+}
+
+% ---------------------------------------------------------------------------------------
+\begin{document}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Vysázení hlavičky - NEMĚNIT
+\hrule
+\medskip
+\noindent{\Large \textbf{01SSI} -- Miniprojekt číslo \cislomp\hfill\rocnik}
+\hrule
+\medskip
+{\large
+\noindent
+\begin{tabular}{lp{12cm}}
+Posluchači:& \textbf{\autor}\\
+Zadání:& \textbf{\zadani} \\
+\end{tabular}
+
+\medskip
+\noindent
+ \hspace{2mm}Odevzdáno: \hfill Získané body: \hfill Finální: ANO/NE
+}
+\medskip
+\hrule
+%% Konec vysázení hlavičky
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% Vlastní popis
+
+\section*{Ukázka matlabovského kódu}
+Takhle to pak vypadá, když chci přidat kus kódu:
+
+\begin{lstlisting}[style=Matlab-editor,caption={Ukázka Matlab kódu.},captionpos=b,label={Kód: test}]
+% fit
+pd_GEV = fitdist(X,'GeneralizedExtremeValue')
+pd_LN = fitdist(X, 'LogNormal')
+
+% KS test
+[h1,p1] = kstest(X,'CDF',pd_GEV)
+h1 = 0
+p1 = 0.9969
+
+[h2,p2] = kstest(X,'CDF',pd_LN)
+h2 = 0
+p2 = 0.8962
+\end{lstlisting}
+
+\section*{Popis modelu}
+\emph{Nemusí být detailní, stačí stručně. Podrobně rozepsat prvky modelu, které se neřešily na přednášce.}\\
+
+Exclusion process s náhodným updatem
+\begin{enumerate}
+	\item Náhodně vyberu buňku $x\in\mathbb{L}$. 
+	\item Je-li $x$ obsazena částicí, přeskočí tato s pravděpodobností $p(x,y)$ do $y\in\mathbb{L}$.
+\end{enumerate}
+
+\noindent Konkrétní tvar $p(x,y)$ je
+\[
+	p(x,y)=\begin{cases}
+		\alpha/\|x-y\| & 0<\|x-y\|\leq R\,,\\
+		0 & \|x-y\|> R\,,\\
+		1-\sum_{y\neq x} p(x,y) & \|x-y\|=0 \,.
+	\end{cases}
+\]
+
+\noindent Parametry $\alpha\in[0,\infty]$, $R\in\mathbb{N}$.
+
+\section*{Stacionární řešení}
+\emph{Stačí report o zvoleném postupu a metodách. V případě náročných výpočtů stačí dodat psané rukou na papíře.}\\
+
+Hledám ve tvaru
+\[
+	\pi(\tau)=\frac{f(\tau)}{\sum_\sigma f(\sigma)}\,,\quad f(\tau)=\prod_x f_x^1(\tau(x))\,.
+\]
+Platí $p(x,y)=p(y,x)$ pro všechna $x,y\in\mathbb{L}$. Rovnici
+\[
+	p(x,y)f_x^1(1)f_y^1(0)=p(y,x)f_y^1(1)f_x^1(0)
+\]
+řeší $f_x(1)=\varrho$, $f_{x}(0)=1-\varrho$. Všechny konfigurace jsou tedy stejně pravděpodobné, tzn.
+\[
+	\pi(\tau)={L-2\choose N-1}{L\choose N}^{-1}
+\]
+
+\section*{Manuál}
+\emph{Jak spustit program, kde nastavit parametry, ....}\\
+
+GUI se spouští skriptem \verb+RUN.m+:
+\begin{center}
+\begin{tikzpicture}
+	\draw (0,0) rectangle (10,5);
+	\node[draw] at (2,1) {Button 1};
+	\node[draw] at (2,2.5) {Button 2};
+	\node[draw] at (2,4) {Button 3};
+	\node[draw] at (7, 1) {|<-------Ruler------->|};
+	\draw (5,2) rectangle (9,4.5);
+\end{tikzpicture}
+\end{center}
+
+\begin{itemize}
+	\item Button 1 spouští...
+	\item Button 2 spouští...
+	\item Button 3 spouští...
+	\item Ruler nastavuje...
+\end{itemize}
+
+\noindent (Nebo)Parametry se nastavují v hlavičce skriptu \verb+RUN+. Nastavuje se:
+\begin{itemize}
+	\item $L$ = počet buněk
+	\item $N$ = počet částic
+	\item ...
+\end{itemize}
+
+
+\section*{Popis programu}
+\emph{Ideální je nějaký pseudokód s drobným vysvětlením, jde hlavně o strukturu, nemusíte vysvětlovat všechno!}\\
+
+\noindent Skript \verb+RUN+
+\begin{itemize}
+	\item Nastavení parametrů $L,N,p$
+	\item Počáteční podmínka pomocí funkce \verb+pocpod=POCPOD(L,N,p)+
+	\item While-cyklus dokud \verb+flow<flowmax+
+	\item Update pomocí funkce \verb+(xnew,vnew)=UPDATE(x,v)+
+	\item Vykreslení
+\end{itemize}
+
+\noindent Funkce \verb+pocpod=POCPOD(L,N,p)+
+\begin{itemize}
+	\item Náhodně rozhodí do mřížky $N$ částic.
+\end{itemize}
+
+\noindent Funkce \verb+(xnew,vnew)=UPDATE(x,v)+
+\begin{itemize}
+	\item ...
+	\item ...
+\end{itemize}
+
+\section*{Porovnání teorie a simulací, výsledky}
+\emph{Jednoduše popsat, co se porovnává a porovnat. Vložte obrázky a diskutujte.}\\
+
+Porovnání hustotního profilu simulací ($\circ$) a teorie (red line).
+
+\begin{center}
+\begin{tikzpicture}
+	\draw (0,0) rectangle (10,5);
+	\draw[red] (0,2) -- (10,2);
+	\foreach \x in {0,1,...,10} {\draw (\x,2) circle (.1);}
+\end{tikzpicture}
+\end{center}
+
+\end{document}

@@ -1,0 +1,468 @@
+\documentclass[11pt,oneside,american,czech]{book}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper]{geometry}
+\geometry{verbose,tmargin=3cm,bmargin=2cm,lmargin=1.5cm,rmargin=1.5cm,headheight=0.8cm,headsep=1cm,footskip=1cm}
+% footskip dává mezeru mezi číslování stránek a textem
+\pagestyle{headings}
+\setcounter{secnumdepth}{3}
+\usepackage{url}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{setspace}
+\usepackage{subfiles}
+\usepackage{cite}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows}
+\usepackage{babel}
+
+\usepackage[charter]{mathdesign}
+
+
+% Packages for code snipets
+%\usepackage{verbatim}
+\usepackage{listings}
+\usepackage{matlab-prettifier}
+\renewcommand{\lstlistingname}{Kód}
+
+\lstset{basicstyle=\mlttfamily}
+\lstset{frame=single}
+\lstset{numbers=left}
+
+\lstset{literate=
+	{í}{{\'i}}1
+	{á}{{\'a}}1
+	{ý}{{\'y}}1
+	{é}{{\'e}}1
+	{ř}{{\v{r}}}1
+	{ó}{{\'o}}1
+	{ů}{{\r{u}}}1
+	{č}{{\v{c}}}1
+	{ě}{{\v{e}}}1
+}
+
+\title{SQL protokol -- evidence Ultimate Frisbee}
+\author{Michaela Mašková}
+\date{\today}
+
+
+\begin{document}
+
+\maketitle
+
+\section*{Představení problému}
+
+Tato databáze má za cíl mapovat českou ultimate frisbee scénu jako evidenci jejích členů společně s nezbytnými informacemi o týmech. Zahrnuje taktéž statistiky jak hráče, tak týmu.
+
+Pár poznámek:
+
+\begin{itemize}
+	\item Česká scéna je rozdělená na několik regionů (spádových oblastí). Týmy tak působí v jednotlivých regionech a zároveň mají své domovské město.
+	\item Ultimate frisbee se hraje ve třech kategoriích: mix, muži a ženy.
+	\item Spirit of the game je zvláštní hodnocení fair play, které má celkem 5 kategorií, v nichž se udává hodnocení mezi 0 a 4. Součet těchto hodnot je celkový výsledek spirita. Spirit se udává vždy pro každý tým za každý odehraný turnaj.
+	\item Produktivita hráče se počítá jako počet bodů (skóre + asistence) v průměru na zápas.
+\end{itemize}
+
+\section*{Schéma}
+
+\tikzstyle{block} = [rectangle, draw, text width=5em, text centered, rounded corners, minimum height=4em]
+
+\tikzstyle{arrow} = [-latex,thick]
+\tikzstyle{arrow2} = [latex-,thick]
+\tikzstyle{arrow n1 filled} = [<<-latex, thick]
+\tikzstyle{arrow 1n filled} = [latex->>, thick]
+\tikzstyle{arrow n1} = [<<->, thick]
+\tikzstyle{arrow 1n} = [<->>, thick]
+\tikzstyle{arrow 11 right} = [<-latex, thick]
+\tikzstyle{arrow 11 left} = [latex->, thick]
+
+\begin{center}
+	\begin{tikzpicture}[node distance = 4cm, auto]
+	\node[block](hrac) {Hráč};
+	\node[block, right of=hrac, xshift=2cm](tym) {Tým};
+	\node[block, above of=tym, xshift=4cm, yshift=-2cm](mesto) {Město};
+	\node[block, right of=tym, yshift=-1cm](soutez) {Soutěž};
+	\node[block, right of=soutez](kategorie) {Kategorie};
+	\node[block, right of=mesto](region) {Region};
+	\node[block, below of=hrac](statistika hrace) {Statistika hráče};
+	\node[block, below of=tym](statistika tymu) {Statistika týmu};
+	
+	\draw[arrow n1 filled] (hrac) -- node {hraje za} (tym);
+	\draw[arrow 1n filled] (mesto) -| node[anchor=south] {působí v} (tym);
+	\draw[arrow 1n filled] (tym) -- node[anchor=south]{hraje} (soutez);
+	\draw[arrow n1 filled] (soutez) -- node{v rámci} (kategorie);
+	\draw[arrow n1 filled] (mesto) -- node{v daném} (region);
+	\draw[arrow 11 left] (hrac) -- node{má} (statistika hrace);
+	\draw[arrow 11 left] (tym) -- node{má} (statistika tymu);
+	
+	
+	\end{tikzpicture}
+\end{center}
+
+
+\section*{Tabulky}
+\subsection*{Přehled}
+\tikzstyle{nazev} = [rectangle, draw, text width=8.7em, text centered, minimum height=0.8cm, minimum width=2.8cm]
+\tikzstyle{nazev2} = [rectangle, draw, text width=12em, text centered, minimum height=0.8cm, minimum width=2.8cm]
+\tikzstyle{table} = [rectangle, draw, text width=8.7em, minimum width=2.8cm, minimum height=3cm]
+\tikzstyle{table2} = [rectangle, draw, text width=12em, minimum width=2.8cm, minimum height=3cm]
+
+\begin{tikzpicture}
+	\node[nazev](hracnazev) {Hráč};
+	\node[table,below of=hracnazev, yshift=-1cm](hraclist) { \vspace{-5mm}
+		\begin{itemize}
+		\setlength\itemsep{-0.5em}
+		\item rodné číslo
+		\item jméno
+		\item příjmení
+		\item číslo dresu
+		\item tym.id
+		\end{itemize}
+	};
+	\node[nazev,right of=hracnazev, xshift=2.6cm](tymnazev) {Tým};
+	\node[table,below of=tymnazev, yshift=-1cm](tymlist) { \vspace{-5mm}
+		\begin{itemize}
+		\setlength\itemsep{-0.5em}
+		\item id.tym
+		\item název týmu
+		\item mesto.id
+		\end{itemize}
+	};
+	\node[nazev,right of=tymnazev, xshift=2.6cm](mestonazev) {Město};
+	\node[table,below of=mestonazev, yshift=-1cm](mestolist) { \vspace{-5mm}
+		\begin{itemize}
+		\setlength\itemsep{-0.5em}
+		\item id.mesto
+		\item název města
+		\item region.id
+		\end{itemize}
+	};
+	\node[nazev,right of=mestonazev, xshift=2.6cm](regionnazev) {Region};
+	\node[table,below of=regionnazev, yshift=-1cm](regionlist) { \vspace{-5mm}
+		\begin{itemize}
+		\setlength\itemsep{-0.5em}
+		\item id.region
+		\item název regionu
+		\end{itemize}
+	};
+
+
+
+	\node[nazev,below of=hraclist, yshift=-1.5cm](souteznazev) {Soutěž};
+	\node[table,below of=souteznazev, yshift=-1cm](soutezlist) { \vspace{-5mm}
+		\begin{itemize}
+		\setlength\itemsep{-0.5em}
+		\item tym.id
+		\item kategorie.id
+		\end{itemize}
+	};
+	\node[nazev,right of=souteznazev, xshift=2.6cm](kategorienazev) {Kategorie};
+	\node[table,below of=kategorienazev, yshift=-1cm](kategorielist) { \vspace{-5mm}
+		\begin{itemize}
+		\setlength\itemsep{-0.5em}
+		\item id.kategorie
+		\item název kategorie
+		\end{itemize}
+	};
+	\node[nazev2,right of=kategorienazev, xshift=3.22cm](statistika tymu nazev) {Statistika týmu};
+	\node[table2,below of=statistika tymu nazev, yshift=-1cm](statistika tymu list) { \vspace{-5mm}
+		\begin{itemize}
+		\setlength\itemsep{-0.5em}
+		\item tym.id
+		\item znalost pravidel
+		\item fauly a body contact
+		\item férové smýšlení
+		\item pozitivní přístup
+		\item komunikace
+		\end{itemize}
+	};
+	\node[nazev2,right of=statistika tymu nazev, xshift=3.84cm](statistika hrace nazev) {Statistika hráče};
+	\node[table2,below of=statistika hrace nazev, yshift=-1cm](statistika hrace list) { \vspace{-5mm}
+		\begin{itemize}
+		\setlength\itemsep{-0.5em}
+		\item hrac.id
+		\item skóre
+		\item asistence
+		\item počet odehraných zápasů
+		\end{itemize}
+	};	
+
+\end{tikzpicture}
+
+\subsection*{Vytvoření tabulek}
+
+\begin{lstlisting}[language=SQL]
+	
+	CREATE TABLE tym(
+		tymID INTEGER PRIMARY KEY,
+		nazev_tymu TEXT,
+		mestoID INTEGER,
+		FOREIGN KEY (mestoID) REFERENCES mesto(mestoID)
+	);
+	
+	CREATE TABLE hrac(
+		rc INTEGER PRIMARY KEY,
+		jmeno TEXT,
+		prijmeni TEXT,
+		cislo INTEGER,
+		tymID INTEGER,
+		FOREIGN KEY (tymID) REFERENCES tym(tymID)
+	);
+	
+	CREATE TABLE mesto(
+		mestoID INTEGER PRIMARY KEY,
+		nazev_mesta TEXT,
+		regionID INTEGER,
+		FOREIGN KEY (regionID) REFERENCES region(regionID)
+	);
+	
+	
+	
+	
+	CREATE TABLE region(
+		regionID int PRIMARY KEY,
+		nazev_regionu text
+	);
+	
+	CREATE TABLE kategorie(
+		kategorieID INTEGER PRIMARY KEY,
+		nazev_kategorie TEXT
+	);
+	
+	CREATE TABLE soutez(
+		tymID INTEGER,
+		kategorieID INTEGER,
+		FOREIGN KEY (tymID) REFERENCES tym(tymID),
+		FOREIGN KEY (kategorieID) REFERENCES kategorie(kategorieID)
+	);
+	
+	CREATE TABLE hostovani(
+		hracID INTEGER,
+		tymID INTEGER,
+		FOREIGN KEY (hracID) REFERENCES hrac(hracID),
+		FOREIGN KEY (tymID) REFERENCES tym(tymID)
+	);
+	
+	CREATE TABLE statistika_tymu(
+		tymID INTEGER,
+		pravidla REAL,
+		fauly REAL,
+		ferovost REAL,
+		pozitiv REAL,
+		komunikace REAL,
+		FOREIGN KEY (tymID) REFERENCES tym(tymID)
+	);
+	
+	CREATE TABLE statistika_hrace(
+		hracID INTEGER,
+		skore REAL,
+		asistence REAL,
+		zapasu REAL,
+		FOREIGN KEY (hracID) REFERENCES hrac(rc)
+	);
+	
+\end{lstlisting}
+
+\pagebreak
+\section*{Views}
+
+\tikzstyle{block dashed} = [rectangle, draw, text width=5em, text centered, rounded corners, minimum height=4em, dashed]
+\tikzstyle{no borders} = [text width=8em, text centered]
+
+\subsubsection*{5 nejproduktivnějších hráčů}
+
+Cílem je zobrazit 5 hráčů s nejvyšším skóre produktivity a zároveň ukázat, z jakého pochází týmu. Stejně tak chceme zobrazit i danou statistiku -- tedy počet bodů, asistencí i odehraných zápasů.
+
+\begin{lstlisting}[language=SQL]
+	CREATE VIEW nejproduktivnejsiHraci AS
+	SELECT
+	 jmeno AS Jméno,
+	 prijmeni AS Příjmení,
+	 (skore + asistence) / zapasu AS Produktivita,
+	 nazev_tymu AS Tým,
+	 skore AS Skóre,
+	 asistence AS Asistence,
+	 zapasu AS 'Odehraných zápasů'
+	FROM hrac
+	INNER JOIN statistika_hrace ON statistika_hrace.hracID = hrac.rc
+	INNER JOIN tym ON hrac.tymID = tym.tymID
+	ORDER BY Produktivita DESC
+	LIMIT 5;
+\end{lstlisting}
+
+\subsubsection*{Kolik hráčů hraje v jednotlivých týmech a v jednotlivých městech?}
+
+Cílem je získat views, které vytvoří tabulku týmů společně s aktivním počtem hráčů. Stejná tabulka pak pro jednotlivá města, kde ovšem chceme jak počet hráčů hrajících v jednotlivých městech, tak počet týmů v daném městě.
+
+\begin{lstlisting}[language=SQL]
+	CREATE VIEW hracuVTymu AS
+	SELECT
+	 nazev_tymu AS Tým,
+	 count(rc) AS 'Počet hráčů'
+	FROM hrac
+	INNER JOIN tym ON hrac.tymID = tym.tymID
+	GROUP BY nazev_tymu
+	ORDER BY count(rc) DESC;
+\end{lstlisting}
+
+\begin{lstlisting}[language=SQL]
+	CREATE VIEW hracuVeMeste AS
+	SELECT
+	 nazev_mesta AS Město,
+	 count(rc) AS 'Počet hráčů',
+	 count(DISTINCT tym.tymID) AS 'Počet týmů'
+	FROM tym
+	INNER JOIN hrac ON hrac.tymID = tym.tymID
+	INNER JOIN mesto ON mesto.mestoID = tym.mestoID
+	GROUP BY nazev_mesta
+	ORDER BY 'Počet hráčů' DESC;
+\end{lstlisting}
+
+\pagebreak
+\subsubsection*{Spirit skóre pro týmy}
+
+První view slouží k ukázání všech týmů a jejich průměrného Spirita. Jelikož vyšší Spirit znamená lepší výsledek, chceme je seřadit sestupně.
+
+\begin{lstlisting}[language=SQL]
+	CREATE VIEW tymySpiritAll AS
+	SELECT
+	 nazev_tymu AS Tým,
+	 pravidla+fauly+ferovost+pozitiv+komunikace AS Spirit,
+	 nazev_mesta AS Město,
+	 nazev_regionu AS Region
+	FROM tym
+	INNER JOIN statistika_tymu ON statistika_tymu.tymID = tym.tymID
+	INNER JOIN mesto ON mesto.mestoID = tym.mestoID
+	INNER JOIN region ON mesto.regionID = region.regionID
+	ORDER BY Spirit DESC;
+\end{lstlisting}
+
+Následující view vyprodukuje tabulku týmů jednotlivých regionů s nejvyšším Spirit skóre.
+
+\begin{lstlisting}[language=SQL]
+	CREATE VIEW tymyNejvyssiSpiritRegionu AS
+	SELECT
+	 nazev_tymu AS Tým,
+	 pravidla+fauly+ferovost+pozitiv+komunikace AS Spirit,
+	 nazev_mesta AS Město,
+	 nazev_regionu AS Region
+	FROM tym
+	INNER JOIN statistika_tymu ON statistika_tymu.tymID = tym.tymID
+	INNER JOIN mesto ON mesto.mestoID = tym.mestoID
+	INNER JOIN region ON mesto.regionID = region.regionID
+	GROUP BY nazev_regionu
+	HAVING max(Spirit);
+\end{lstlisting}
+
+\subsubsection*{Které týmy hrají ve všech třech kategoriích?}
+
+Každý tým může hrát v alespoň jedné nebo až třech kategoriích. Tento view slouží k ukázání týmů, které hrají ve všech třech kategoriích.
+
+\begin{lstlisting}[language=SQL]
+	CREATE VIEW tymyVsechKategorii AS
+	SELECT
+	 nazev_tymu AS Tým
+	FROM tym
+	INNER JOIN soutez ON soutez.tymID = tym.tymID
+	INNER JOIN kategorie ON kategorie.kategorieID = soutez.kategorieID
+	GROUP BY nazev_tymu
+	HAVING count(nazev_tymu) = 3;
+\end{lstlisting}
+
+\pagebreak
+\subsection*{Procedury}
+
+Následují procedury pro zjednodušení různých úkonů v databázi. Rozdělené jsou na procedury pro hráče a pro týmy.
+
+\subsubsection*{Procedury pro hráče}
+
+První procedura vrátí produktivitu pro hráče daného jména. Druhá pak domovský tým tohoto hráče.
+
+\begin{lstlisting}[language=SQL]
+	CREATE PROCEDURE produktivitaHrace @jmeno TEXT, @prijmeni TEXT
+	AS
+	BEGIN
+	 SELECT
+	  jmeno AS jmeno,
+	  prijmeni AS prijmeni,
+	  (skore + asistence) / zapasu AS produktivita,
+	 FROM hrac
+	 INNER JOIN statistika_hrace ON statistika_hrace.hracID = hrac.rc
+	 INNER JOIN tym ON hrac.tymID = tym.tymID
+	 WHERE jmeno = @jmeno AND prijmeni = @prijmeni;
+	END
+	
+	EXEC produktivitaHrace @jmeno = Michal, @prijmeni = David	
+\end{lstlisting}
+
+\begin{lstlisting}[language=SQL]
+	CREATE PROCEDURE tymHrace @jmeno TEXT, @prijmeni TEXT
+	AS
+	BEGIN
+	 SELECT jmeno, prijmeni, tym
+	 FROM hrac
+	 INNER JOIN tym ON hrac.tymID = tym.tymID
+	 WHERE jmeno = @jmeno AND prijmeni = @prijmeni;
+	END
+	
+	EXEC tymHrace @jmeno = Michal, @prijmeni = David
+\end{lstlisting}
+
+Poslední procedura přidá nového hráče do tabulky.
+
+\begin{lstlisting}[language=SQL]
+	CREATE PROCEDURE pridejHrace @jmeno TEXT, @prijmeni TEXT, @rc INTEGER, @tym TEXT
+	AS
+	BEGIN
+	 SELECT tymID FROM tym WHERE nazev_tymu = @tym INTO @newID
+	 INSERT INTO hrac (jmeno, prijmeni, rc, tymID)
+	 	VALUES (@jmeno, @prijmeni, @rc, @newID)
+	 COMMIT;
+	END
+	
+	EXEC pridejHrace 'Petr', 'Partl', 9606138714, 'Prague Devils'
+\end{lstlisting}
+
+\pagebreak
+\subsubsection*{Procedury pro týmy}
+
+Následuje procedura, která pro vybraný tým spočítá jeho průměrný spirit.
+
+\begin{lstlisting}[language=SQL]
+	CREATE PROCEDURE spiritTymu @nazev_tymu TEXT
+	AS
+	BEGIN
+	 SELECT
+	  nazev_tymu AS jmeno,
+	  pravidla+fauly+ferovost+pozitiv+komunikace AS spirit,
+	 FROM tym
+	 INNER JOIN statistika_tymu ON statistika_tymu.tymID = tym.tymID
+	 WHERE jmeno = @nazev_tymu;
+	END
+	
+	EXEC spiritTymu 'Chupacabras'
+\end{lstlisting}
+
+Poslední procedura je přidání daného týmu.
+
+\begin{lstlisting}[language=SQL]
+	CREATE PROCEDURE pridejTym @nazev_tymu TEXT, @nazev_mesta TEXT
+	AS
+	BEGIN
+	 IF EXISTS(SELECT * FROM tym) THEN
+	  SELECT MAX(tymID)+1 FROM tym INTO @newTymID;
+	 ELSE
+	  @newTymID=1;
+	 END
+	 SELECT mestoID FROM mesto WHERE nazev_mesta = @nazev_mesta INTO @newMestoID
+	 INSERT INTO tym (tymID, nazev_tymu, mestoID)
+	 	VALUES (@newTymID, @nazev_tymu, @newMestoID)
+	 COMMIT;
+	END
+	
+	EXEC pridejTym 'Flying Tigers', 'Brno'
+\end{lstlisting}
+
+\end{document}
