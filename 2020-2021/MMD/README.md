@@ -12,4 +12,6 @@ Kód je v jazyce Julia, konkrétní použité balíčky jsou v hlavním skriptu 
 
 ## Protokol
 
-Složka *latex* obsahuje výsledný protokol ve formátu PDF.
+Samotné vypracování protokolu představuje soubor MMD_seminarka.pdf.
+
+(c) Michaela Mašková 2021
