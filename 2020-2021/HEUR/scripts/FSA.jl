@@ -35,5 +35,3 @@ df = RandomShooting(X, labels, k_vec, ν_vec, iter = 100, print = false)
 
 sa = SimulatedAnnealing()
 optimize()
-
-function neightbor()

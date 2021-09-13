@@ -1,0 +1,11 @@
+using Plots
+
+# plot R(t)
+R(λ,t) = 4*exp(-4*λ*t) - 4*exp(-5*λ*t) + 3*exp(-7*λ*t) - 2*exp(-8*λ*t)
+tline = 0:0.002:15
+
+p = plot(xlabel="t", ylabel="R(t)")
+for λ in [0.05,0.1,0.2,0.5,1]
+	p = plot!(tline, [R(λ,t) for t in tline], label="λ = $λ",lw=1.5)
+end
+p

@@ -38,3 +38,6 @@ Manifest.toml
 *.out
 *.gz
 *.toc
+
+# SKE python environment folder
+2020-2021/SKE/ske
