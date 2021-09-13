@@ -1,4 +1,6 @@
+using LightGraphs, Distances
 using EvalMetrics
+using GraphPlot, Compose, Cairo, Fontconfig
 
 function kNNanomaly(X; k=5, proportion=0.8, plot_me=false, type="gamma", print = true)
     nn = size(X,2)
@@ -8,10 +10,14 @@ function kNNanomaly(X; k=5, proportion=0.8, plot_me=false, type="gamma", print =
     # and the indices
     if type == "kappa"
         kappa = D[:,k]
-        inds = kappa .< median(kappa)
-    else
+        inds = kappa .< quantile(kappa,proportion)
+    elseif type == "gamma"
         gamma = mean(D[:,1:k],dims=2)[:]
         inds = gamma .< quantile(gamma,proportion)
+    elseif type == "delta"
+        d = D[:, 1:k]
+        delta = LinearAlgebra.norm(X - Statistics.mean(d,dims=2))
+        inds = delta .< quantile(delta,proportion)
     end
 
     # prepare necessarry matrices
@@ -37,7 +43,7 @@ function kNNanomaly(X; k=5, proportion=0.8, plot_me=false, type="gamma", print =
     for i in 1:length(E)
         idx = findall(x -> x == v_sorted[i], v_distances)
         edge = E[idx]
-        bool = rem_edge!(G2,edge...)
+        bool = rem_edge!(G2,edge[1])
         if bool == true
             if print
                 @info "$(edge...) removed."
@@ -93,8 +99,8 @@ function kNNanomaly(X; k=5, proportion=0.8, plot_me=false, type="gamma", print =
         nodecolor = [colorant"lightseagreen", colorant"orange"]
         nodefillc = nodecolor[X_labels .+ 1]
 
-        draw(PNG(plotsdir("kNNanomaly","graph_before.png"),30cm,30cm), gplot(G1,nodelabel=1:N,nodefillc=nodefillc,nodesize=2))
-        draw(PNG(plotsdir("kNNanomaly","graph_after.png"),30cm,30cm), gplot(G2,nodelabel=1:N,nodefillc=nodefillc,nodesize=2))
+        draw(PNG(plotsdir("graph_before.png"),30cm,30cm), gplot(G1,nodelabel=1:N,nodefillc=nodefillc,nodesize=2))
+        draw(PNG(plotsdir("graph_after.png"),30cm,30cm), gplot(G2,nodelabel=1:N,nodefillc=nodefillc,nodesize=2))
     end
 
     return (final_labels, n_small, N)
@@ -115,42 +121,55 @@ function f_score(labels, score; β=1)
     (1+β^2)*(r*p)/(r+p)
 end
 
-function kNN_search(data, labels, k, ν)
+function kNN_search(data, labels, k, v; type="gamma")
     par = Dict(
         :k => collect(k),
-        :ν => collect(ν)
+        :v => collect(v)
     )
     par_list = dict_list(par)
 
-    sizes = zeros(length(par_list),7)
-    L = []
+    results = []
 
     @showprogress "Iterating..." for i in 1:length(par_list)
-        @unpack k, ν = par_list[i]
-        new_labels, sm, nn = kNNanomaly(data,k=k,proportion=ν, print = false);
+        @unpack k, v = par_list[i]
+        new_labels, sm, nn = kNNanomaly(data,k=k,proportion=v, type=type, print = false)
 
         if !(isnan(sm))
+            # create labels
             score = flipped_score(labels, new_labels)
-            sizes[i,1] = sm/nn
-            sizes[i,2] = f_score(labels, score)
-            sizes[i,3] = precision(labels, score)
-            sizes[i,4] = accuracy(labels, score)
-            sizes[i,5] = recall(labels, score)
-            sizes[i,6] = k
-            sizes[i,7] = ν
-            push!(L, score)
+            # save parameters and results
+            r = DataFrame(
+                :size => sm/nn,
+                :F => f_score(labels, score),
+                :precision => precision(labels, score),
+                :accuracy => accuracy(labels, score),
+                :recall => recall(labels, score),
+                :k => k,
+                :v => v,
+                :labels => [score]
+            )
+            push!(results, r)
         else
-            push!(L, nothing)
+            r = DataFrame(
+                :size => NaN,
+                :F => NaN,
+                :precision => NaN,
+                :accuracy => NaN,
+                :recall => NaN,
+                :k => k,
+                :v => v,
+                :labels => NaN
+            )
+            push!(results, r)
         end
         
     end
 
-    df = DataFrame(hcat(sizes,L),:auto)
-    rename!(df, [:size, :F, :precision, :accuracy, :recall, :k, :ν, :labels])
+    df = vcat(results...)
     fdf = filter(x -> x.size > 0, df)
     n_prev = size(df, 1)
     n_post = size(fdf, 1)
 
-    @info "Returning resulting DataFrame with $n_post combinations out of original $n_prev."
-    return fdf
+    @info "DataFrame with $n_post combinations out of original $n_prev."
+    return df
 end

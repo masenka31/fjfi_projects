@@ -17,13 +17,26 @@ end
 
 function scatter2(X; kwargs...)
     if size(X,1) != 2
-        error("Input vector needs to habe 2 rows!")
+        @warn "Input vector has more than 2 rows."
     end
     scatter(X[1,:],X[2,:]; kwargs...)
 end
 function scatter2!(X; kwargs...)
     if size(X,1) != 2
-        error("Input vector needs to habe 2 rows!")
+        @warn "Input vector has more than 2 rows."
     end
     scatter!(X[1,:],X[2,:]; kwargs...)
+end
+
+function scatter3(X; kwargs...)
+    if size(X,1) != 3
+        @warn "Input vector has more than 3 rows."
+    end
+    scatter(X[1,:],X[2,:],X[3,:]; kwargs...)
+end
+function scatter3!(X; kwargs...)
+    if size(X,1) != 3
+        @warn "Input vector has more than 3 rows."
+    end
+    scatter!(X[1,:],X[2,:],X[3,:]; kwargs...)
 end
